@@ -144,10 +144,10 @@ class SqlParser(object):
         return NodeLoad(infile_name, table_name, ignore_lines)
 
     def _parse_create(self):
-        raise NotImplemented("TODO - CREATE command Put your code here")
+        raise NotImplementedError("TODO - CREATE command Put your code here")
 
     def _parse_select(self):
-        raise NotImplemented("TODO - SELECT command Put your code here")
+        raise NotImplementedError("TODO - SELECT command Put your code here")
 
     def parse_show_error(self):
         try:
