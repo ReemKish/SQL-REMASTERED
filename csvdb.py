@@ -1,4 +1,4 @@
-# ------------------------------------------ Description ------------------------------------------
+# -------------------------------------- Program Description --------------------------------------
 # Interpreter for the CSV Data Base - Structured Query Launguage
 # By Maayan Kestenberg and Re'em Kishnveksy
 
@@ -30,11 +30,16 @@ if args.script_path and not os.path.isfile(args.script_path):
     cl_parser.error(f"argument -r/--run: No such file: '{args.script_path}'")
 print(program_desc)
 if args.script_path:  # User supplied a script file path
-    pass  # Implement execution of a script here
+    script = open(args.script_path).read()
+    commands = filter(lambda command: not command.isspace(), script.split(";"))
+    commands = [command.strip().replace("\n", " ") + ";" for command in commands if command.strip()]
+    for command in commands:
+        sql_parser = sqlparser.SqlParser(command)
+        sql_parser.parse_show_error()
 else:
     while True:
-        block = input("csvdb>")
-        while block[-1]!=";":
-            block += " " + input("......")
-        sql_parser = sqlparser.SqlParser(block)  # 3 times 'sql parser' in one line LoL
+        command = input("csvdb>")
+        while command[-1]!=";":
+            command += " " + input("......")
+        sql_parser = sqlparser.SqlParser(command)  # 3 times 'sql parser' in one line LoL
         sql_parser.parse_show_error()
