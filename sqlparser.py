@@ -1,4 +1,5 @@
 import sqltokenizer
+import re
 
 
 class CSVDBSyntaxError(ValueError):
@@ -27,7 +28,10 @@ class BaseSyntaxNode(object):
     pass
 
 class NodeCreate(BaseSyntaxNode):
-    pass
+    def __init__(self, if_not_exists, table_name, scheme):
+        self.if_not_exists = if_not_exists
+        self.table_name = table_name
+        self.scheme = scheme
 
 class NodeDrop(BaseSyntaxNode):
     def __init__(self, table_name, allow_not_exists):
@@ -57,15 +61,18 @@ class SqlParser(object):
         self._line, self._col = self._tokenizer.cur_text_location()
         self._token, self._val = self._tokenizer.next_token()
 
-    def _expect_next_token(self, token, expected_val_or_none=None):
+    def _expect_next_token(self, token, expected_val_or_none=None, regex=None):
         self._next_token()
-        self._expect_cur_token(token, expected_val_or_none)
+        self._expect_cur_token(token, expected_val_or_none, regex)
 
-    def _expect_cur_token(self, token, expected_val_or_none=None):
+    def _expect_cur_token(self, token, expected_val_or_none=None, regex=None):
         if self._token != token:
             self._raise_error("Unexpected token: {}:{} (expecting {})".format(self._token, self._val, token) )
         if expected_val_or_none is not None and self._val != expected_val_or_none:
             self._raise_error("Unexpected token value: " + str(self._val))
+        if regex is not None and not re.match(regex, self._val):
+            self._raise_error("Unexpected token value: " + str(self._val))
+
 
     def parse_single_command(self):
         """Parse a single command and return syntax-tree-node.
@@ -85,7 +92,7 @@ class SqlParser(object):
         elif val == "select":
             return self._parse_select()
         else:
-            self._raise_error("Unexpected commad: " + str(self._val))
+            self._raise_error("Unexpected command: " + str(self._val))
 
     def parse_multi_commands(self):
         """Parse SQL commands, retrn a list of the Syntax Tree-root-node for each command"""
@@ -143,7 +150,42 @@ class SqlParser(object):
         return NodeLoad(infile_name, table_name, ignore_lines)
 
     def _parse_create(self):
-        raise NotImplementedError("TODO - CREATE command Put your code here")
+        # syntax:
+        # CREATE TABLE [IF NOT EXISTS] _table_name_ (
+        #   [_name_ _type_,]*
+        #   _name, _type_,
+        # )
+
+
+        self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "table")
+        self._next_token()
+        if_not_exists = False
+        if self._token == sqltokenizer.SqlTokenKind.KEYWORD and self._val == "if":
+            self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "not")
+            self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "exists")
+            self._next_token()
+            if_not_exists = True
+        self._expect_cur_token(sqltokenizer.SqlTokenKind.LIT_STR, LIT_STR, r"[a-zA-Z_]+[a-zA-Z0-9]*")
+        table_name = self._val
+        self._expect_next_token(sqltokenizer.SqlTokenKind.IDENTIFIER, "(")
+        self._expect_next_token(sqltokenizer.SqlTokenKind.LIT_STR)
+        scheme = []
+        scheme.append([self._val])
+        self._expect_next_token(sqltokenizer.SqlTokenKind.LIT_STR)
+        scheme[-1].append(self._val)
+        self._expect_next_token(sqltokenizer.SqlTokenKind.OPERATOR)
+        while self._val == ",":
+            self._expect_next_token(sqltokenizer.SqlTokenKind.LIT_STR)
+            scheme.append([self._val])
+            self._expect_next_token(sqltokenizer.SqlTokenKind.LIT_STR)
+            scheme[-1].append(self._val)
+            self._expect_next_token(sqltokenizer.SqlTokenKind.OPERATOR)
+        self._expect_cur_token(sqltokenizer.SqlTokenKind.OPERATOR, ";")
+        return NodeCreate(if_not_exists, table_name, scheme)
+
+
+
+
 
     def _parse_select(self):
         raise NotImplementedError("TODO - SELECT command Put your code here")
@@ -164,4 +206,3 @@ def _test():
 
 if __name__ == "__main__":
     _test()
-
