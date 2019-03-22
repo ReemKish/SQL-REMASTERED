@@ -69,7 +69,7 @@ def execute_parsed_command(node, cursor, verbose):
         sql_text = "DROP TABLE {}{};".format(not_exist_clause, node.table_name)
     elif isinstance(node, sqlparser.NodeLoad):
         # Read CSV and load into SQLite
-        with open(node.infile_name, newline='') as csvfile:
+        with open(node.outfile_name, newline='') as csvfile:
             reader = csv.reader(csvfile)
             for i, row in enumerate(reader):
                 row = map(lambda s: '"' + s +'"' if s else "NULL", row)

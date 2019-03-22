@@ -31,6 +31,7 @@ class SqlTokenizer(object):
         'sum',
         'min',
         'max',
+        'count',
         'load',
         'drop',
         'order',
@@ -55,20 +56,21 @@ class SqlTokenizer(object):
         'and',
         'or',
         'not',
+        'is',
         'create',
         'if',
-        'exists',
+        'exists'
     ]
     _operators = [
+        "<>",
+        "<=",
+        ">=",
         ",",
         "(",
         ")",
         "<",
-        "<=",
-        "<>",
-        "=",
-        ">=",
         ">",
+        "=",
         ";",
         "*",
     ]
@@ -109,7 +111,7 @@ class SqlTokenizer(object):
 
     def cur_text_location(self):
         """return line number and offset in line of the current token to allow
-        error messages. returns two calues: line, column"""
+        error messages. returns two caluses: line, column"""
         return self._cur_line_number + 1, self._i_next - self._cur_line_start_index + 1
 
     def _next_lit_numeric(self):
@@ -155,7 +157,6 @@ class SqlTokenizer(object):
             if self._text[self._i_next:].startswith(op):
                 self._i_next += len(op)
                 return op
-        return None
 
     def _eof(self):
         return self._i_next >= self._n

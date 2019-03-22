@@ -24,7 +24,13 @@ cl_parser.add_argument("-v", "--verbose", help="turn on debugging output", actio
 
 # ------------------------------------------- Functions -------------------------------------------
 def input_command():
-    command = input("csvdb> ")
+    while True:
+        try:
+            command = input("csvdb> ")
+        except EOFError:  # Exit program
+            exit()
+        if command.strip() == "exit" or command.strip() == "quit": exit()
+        elif command: break
     while command[-1]!=";":
         command += " " + input(".......")
     return command
@@ -40,7 +46,7 @@ def parse_cmdline_args():
 
 def handle_script():
     script = open(args.script_path).read()
-    sql_parser = sql_parser.SqlParser(script)
+    sql_parser = sqlparser.SqlParser(script)
     sql_parser.parse_show_error()
 
 def handle_interpreter():
@@ -50,11 +56,11 @@ def handle_interpreter():
         sql_parser.parse_show_error()
 
 def main():
+    global args
     args = parse_cmdline_args()
     if args.script_path:  # User supplied a script file path
         handle_script()
-    else:
-        handle_interpreter()
+    handle_interpreter()
         
 
 
