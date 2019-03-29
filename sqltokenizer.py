@@ -1,4 +1,3 @@
-from __future__ import print_function
 import ast
 from enum import Enum
 import re

@@ -6,7 +6,7 @@ class Condition(object):
         {IDENTIFIER} _field_name_: [a-zA-Z_]\w*
         {OPERATOR | KEYWORD} _operator_: [< | <= | = | >= | > | <> | IS | IS NOT]
         {LIT_NUM | LIT_STR} _constant_: Number, string enclosed in double quotes, 
-                                        or string 'NULL' indicating null value
+                                        or identifier NULL indicating null value
     
     e.g:
         age > 15  =>  _field_name_ = "age"

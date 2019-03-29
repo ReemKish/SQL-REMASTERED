@@ -1,7 +1,7 @@
 import sqltokenizer
 import re
-from sqlclauses import *
-from sys import exit
+from argument_clauses import *
+from sys import float_info
 
 
 class CSVDBSyntaxError(ValueError):
@@ -16,8 +16,9 @@ class CSVDBSyntaxError(ValueError):
         """Returns a string with the original string and the location of the syntax error"""
         s = ""
         for i, line_text in enumerate(self.text.splitlines() + ["\n"]):
-            s += line_text
-            if i == self.line:
+            # s += line_text
+            if i == self.line - 1:
+                s += line_text + "\n"
                 s += "=" * (self.col - 1) + "^^^\n"
         return s
 
@@ -39,7 +40,7 @@ class BaseSyntaxNode(object):
 
 class NodeDrop(BaseSyntaxNode):
     def __init__(self, table_name, if_exists):
-        self.table_name = table_name  # table to drop
+        self.table_name = table_name
         self.if_exists =  if_exists
 
 class NodeLoad(BaseSyntaxNode):
@@ -115,7 +116,7 @@ class SqlParser(object):
             self._raise_error("Unexpected command: " + str(self._val))
 
     def parse_multi_commands(self):
-        """Parse SQL commands, retrn a list of the Syntax Tree-root-node for each command"""
+        """Parse SQL commands, return a list of the Syntax Tree-root-node for each command"""
         nodes = []
         while True:
             node = self.parse_show_error()
@@ -407,7 +408,7 @@ class SqlParser(object):
 
     
     def parse_condition_clause(self):
-        """Parses a condition clause and returns it as a Condition object
+        """Parses a condition clause and returns it as a Condition object.
         
         Returns:
             Condition -- the constructed condition.
@@ -422,7 +423,7 @@ class SqlParser(object):
         if self._token == sqltokenizer.SqlTokenKind.KEYWORD:
             self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "is")
             self._next_token()
-            if self._token == sqltokenizer.SqlTokenKind.KEYWORD:
+            if self._token == sqltokenizer.SqlTokenKind.KEYWORD and self._val == "not":
                 self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "not")
                 _operator_ = "is not"
                 self._next_token()
@@ -437,9 +438,12 @@ class SqlParser(object):
         if self._token == sqltokenizer.SqlTokenKind.LIT_NUM:
             self._expect_cur_token(sqltokenizer.SqlTokenKind.LIT_NUM)
             _constant_ = self._val
-        else:
+        elif self._token == sqltokenizer.SqlTokenKind.LIT_STR:
             self._expect_cur_token(sqltokenizer.SqlTokenKind.LIT_STR)
             _constant_ = self._val
+        else:  # null value
+            self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "null")
+            _constant_ = -float_info.max
         
         # Advance the cursor and construct the condition:
         self._next_token()  

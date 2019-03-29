@@ -1,11 +1,12 @@
 # -------------------------------------- Program Description --------------------------------------
-# Interpreter for the CSV Data Base - Structured Query Launguage
+# Command Line Tool for the CSV Data Base - Structured Query Launguage
 # By Maayan Kestenberg and Re'em Kishnveksy
 
 import argparse
 from colorama import init, Fore, Style # For displaying colored text to the terminal
-import sqlparser
 import os
+import sqlparser
+import sqlexecuter
 
 # ---------------------------------------- Initialization -----------------------------------------
 init()  # Init colorama
@@ -44,23 +45,26 @@ def parse_cmdline_args():
     print(program_desc)
     return args
 
-def handle_script():
-    script = open(args.script_path).read()
+def handle_script(script_path, verbose=False):
+    script = open(script_path).read()
     sql_parser = sqlparser.SqlParser(script)
-    sql_parser.parse_show_error()
+    nodes = sql_parser.parse_multi_commands()
+    for node in nodes:
+        sqlexecuter.execNode(node, verbose)
 
-def handle_interpreter():
+def handle_interpreter(verbose=False):
     while True:
         command = input_command()
         sql_parser = sqlparser.SqlParser(command)  # 3 times 'sql parser' in one line LoL
-        sql_parser.parse_show_error()
+        node = sql_parser.parse_show_error()
+        sqlexecuter.execNode(node, verbose)
 
 def main():
-    global args
     args = parse_cmdline_args()
     if args.script_path:  # User supplied a script file path
-        handle_script()
-    handle_interpreter()
+        handle_script(args.script_path, args.verbose)
+    else:
+        handle_interpreter(args.verbose)
         
 
 
