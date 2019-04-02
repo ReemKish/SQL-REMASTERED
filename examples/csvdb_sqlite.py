@@ -124,7 +124,7 @@ def main():
     parser.add_argument("--verbose", help="print log messages that helps debug", action='store_true')
     parser.add_argument("--test", help="print log messages that helps debug", action='store_true')
     args = parser.parse_args()
-    os.chdir(args.rootdir)
+    os.chdir(args.rootdir  )
 
     if args.run:
         with open(args.run) as infile:

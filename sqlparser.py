@@ -50,10 +50,11 @@ class NodeLoad(BaseSyntaxNode):
         self.ignore_lines = ignore_lines
 
 class NodeCreate(BaseSyntaxNode):
-    def __init__(self, if_not_exists, table_name, scheme):
+    def __init__(self, if_not_exists, table_name, scheme, select_command):
         self.if_not_exists = if_not_exists
         self.table_name = table_name
         self.scheme = scheme
+        self.select_command = select_command
 
 class NodeSelect(BaseSyntaxNode):
     def __init__(self, expression_list, outfile_name, table_name, row_condition,
@@ -206,16 +207,22 @@ class SqlParser(object):
     def _parse_create(self):
         """Parse a CREATE command.
         Syntax:
-            CREATE TABLE [IF NOT EXISTS] _table_name_ (
-                _scheme_
-            );
+            1.
+                CREATE TABLE [IF NOT EXISTS] _table_name_ (
+                    _scheme_
+                );
 
-            {IDENTIFIER} _table_name_: [a-zA-Z_]\w*
-            _scheme_: [_name_ _type_,]*
-                       _name_ _type_
-                {IDENTIFIER} _name_: [a-zA-Z_]\w*
-                {KEYWORD} _type_: [INT|FLOAT|VARCHAR|TIMESTAMP]
-   
+                {IDENTIFIER} _table_name_: [a-zA-Z_]\w*
+                _scheme_: [_name_ _type_,]*
+                        _name_ _type_
+                    {IDENTIFIER} _name_: [a-zA-Z_]\w*
+                    {KEYWORD} _type_: [INT|FLOAT|VARCHAR|TIMESTAMP]
+            2.
+                CREATE TABLE [IF NOT EXISTS] _table_name_ AS _select_command_
+
+                {IDENTIFIER} _table_name_: [a-zA-Z_]\w*
+                _select_command_: SELECT command syntax (see _parse_select documentation)
+    
         Returns:
             NodeCreate -- node with the CREATE command arguments.
         """
@@ -224,6 +231,7 @@ class SqlParser(object):
         _if_not_exists_ = False
         _table_name_ = ""
         _scheme_ = []
+        _select_command_ = None
 
 
         self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "table")
@@ -238,25 +246,32 @@ class SqlParser(object):
         
         self._expect_cur_token(sqltokenizer.SqlTokenKind.IDENTIFIER, regex=r"[a-zA-Z_]\w*")
         _table_name_ = self._val
-        self._expect_next_token(sqltokenizer.SqlTokenKind.OPERATOR, "(")
+        self._next_token()
 
-        # Parse table scheme:
-        while True:
-            _name_ = _type_ = None
-            self._expect_next_token(sqltokenizer.SqlTokenKind.IDENTIFIER)
-            _name_ = self._val
-            self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD)
-            _type_ = self._val
-            _scheme_.append((_name_, _type_))
+        if self._val == "(" and self._token == sqltokenizer.SqlTokenKind.OPERATOR:
+            # Parse table scheme:
+            self._expect_cur_token(sqltokenizer.SqlTokenKind.OPERATOR, "(")
+            while True:
+                _name_ = _type_ = None
+                self._expect_next_token(sqltokenizer.SqlTokenKind.IDENTIFIER)
+                _name_ = self._val
+                self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, ["int", "float", "varchar", "timestamp"])
+                _type_ = self._val
+                _scheme_.append((_name_, _type_))
 
-            self._expect_next_token(sqltokenizer.SqlTokenKind.OPERATOR)
-            if self._val == ")":
-                self._next_token()
-                break
+                self._expect_next_token(sqltokenizer.SqlTokenKind.OPERATOR)
+                if self._val == ")":
+                    self._next_token()
+                    break
+        else:
+            self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "as")
+            self._next_token()
+            _select_command_ = self._parse_select()
+        
 
         
         self._expect_cur_token(sqltokenizer.SqlTokenKind.OPERATOR, ";")
-        return NodeCreate(_if_not_exists_, _table_name_, _scheme_)
+        return NodeCreate(_if_not_exists_, _table_name_, _scheme_, _select_command_)
 
 
     def _parse_select(self):
@@ -462,6 +477,7 @@ class SqlParser(object):
 def _test():
     commands = ['DROP TABLE IF EXISTS movies;',
                 'LOAD DATA INFILE "data.txt"\nINTO TABLE _table\nIGNORE 2 LINES;',
+                'CREATE TABLE _table AS SELECT SUM(_col0_) as _sum_col1_ FROM _table0 ORDER BY _col0_;',
                 'CREATE TABLE IF NOT EXISTS _table (\n\tcol0 INT,\n\tcol1 FLOAT,\n\tcol2 VARCHAR,\n\tcol3 TIMESTAMP\n);',
                 'SELECT col0 AS _col0_, col1, SUM(col2) AS _sum_col2_\nINTO OUTFILE "result.csv"\nFROM _table\nWHERE _col0_ <> 5.5e2\nGROUP BY col1, _col0_\nHAVING _sum_col2_ < 10\nORDER BY col1 DESC, _col0_ ASC;']
 

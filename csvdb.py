@@ -45,26 +45,26 @@ def parse_cmdline_args():
     print(program_desc)
     return args
 
-def handle_script(script_path, verbose=False):
+def handle_script(script_path, rootdir, verbose):
     script = open(script_path).read()
     sql_parser = sqlparser.SqlParser(script)
     nodes = sql_parser.parse_multi_commands()
     for node in nodes:
-        sqlexecuter.execNode(node, verbose)
+        sqlexecuter.execNode(node, rootdir, verbose)
 
-def handle_interpreter(verbose=False):
+def handle_interpreter(rootdir, verbose):
     while True:
         command = input_command()
         sql_parser = sqlparser.SqlParser(command)  # 3 times 'sql parser' in one line LoL
         node = sql_parser.parse_show_error()
-        sqlexecuter.execNode(node, verbose)
+        sqlexecuter.execNode(node, rootdir, verbose)
 
 def main():
     args = parse_cmdline_args()
     if args.script_path:  # User supplied a script file path
-        handle_script(args.script_path, args.verbose)
+        handle_script(args.script_path, args.rootdir_path, args.verbose)
     else:
-        handle_interpreter(args.verbose)
+        handle_interpreter(args.rootdir_path, args.verbose)
         
 
 
