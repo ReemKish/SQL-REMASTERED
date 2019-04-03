@@ -31,7 +31,7 @@ def input_command():
         except EOFError:  # Exit program
             exit()
         if command.strip() == "exit" or command.strip() == "quit": exit()
-        elif command: break
+        elif command.strip(): break
     while command[-1]!=";":
         command += " " + input(".......")
     return command

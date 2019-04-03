@@ -458,7 +458,7 @@ class SqlParser(object):
             _constant_ = self._val
         else:  # null value
             self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "null")
-            _constant_ = -float_info.max
+            _constant_ = float('-inf')
         
         # Advance the cursor and construct the condition:
         self._next_token()  
