@@ -10,18 +10,16 @@ class CSVDBSyntaxError(ValueError):
         self.line = line
         self.col = col
         self.text = text
-        self.message = "CSVDB Syntax error at line {}  col {}: {}".format(line, col, message)
 
-    def show_error_location(self):
-        """Returns a string with the original string and the location of the syntax error"""
-        s = ""
+        # Build location clause of the error message:
+        location_clause = ""
         for i, line_text in enumerate(self.text.splitlines() + ["\n"]):
             # s += line_text
             if i == self.line - 1:
-                s += line_text + "\n"
-                s += "=" * (self.col - 1) + "^^^\n"
-        return s
+                location_clause += line_text + "\n"
+                location_clause += " " * (self.col - 1) + "^"
 
+        self.message = f"CSVDB Syntax error at line {line} col {col}:\n{location_clause}\n{message}\n"
     def __str__(self):
         return self.message
 
@@ -90,9 +88,9 @@ class SqlParser(object):
             expected_val_or_none = [expected_val_or_none] 
         if self._token != token:
             self._raise_error("Unexpected token: {}:{} (expecting {})".format(self._token, self._val, token) )
-        if expected_val_or_none and self._val not in expected_val_or_none:
+        elif expected_val_or_none and self._val not in expected_val_or_none:
             self._raise_error("Unexpected token value: " + str(self._val))
-        if regex and not re.match(regex, self._val):
+        elif regex and not re.match(regex, self._val):
             self._raise_error("Unexpected token value: " + str(self._val))
 
 
@@ -116,11 +114,14 @@ class SqlParser(object):
         else:
             self._raise_error("Unexpected command: " + str(self._val))
 
-    def parse_multi_commands(self):
+    def parse_multi_commands(self, show_error=True):
         """Parse SQL commands, return a list of the Syntax Tree-root-node for each command"""
         nodes = []
         while True:
-            node = self.parse_show_error()
+            if show_error:
+                node = self.parse_show_error()
+            else:
+                node = self.parse_single_command()
             if not node:
                 return nodes
             nodes.append(node)
@@ -257,7 +258,7 @@ class SqlParser(object):
                 _name_ = self._val
                 self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, ["int", "float", "varchar", "timestamp"])
                 _type_ = self._val
-                _scheme_.append((_name_, _type_))
+                _scheme_.append(CreateField(_name_, _type_))
 
                 self._expect_next_token(sqltokenizer.SqlTokenKind.OPERATOR)
                 if self._val == ")":
@@ -470,8 +471,7 @@ class SqlParser(object):
         try:
             return self.parse_single_command()
         except CSVDBSyntaxError as ex:
-            print(ex.show_error_location(),end="")
-            print(ex,end="\n\n")
+            print(ex)
 
 
 def _test():

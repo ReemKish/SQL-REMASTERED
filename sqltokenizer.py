@@ -11,6 +11,9 @@ class SqlTokenKind(Enum):
     LIT_NUM = 4
     OPERATOR = 5
 
+    def __str__(self):
+        return super().__str__()[len("SqlTokenKind."):]
+
 
 class SqlTokenizer(object):
     # ERROR = -1

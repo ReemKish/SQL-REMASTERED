@@ -28,12 +28,17 @@ def input_command():
     while True:
         try:
             command = input("csvdb> ")
-        except EOFError:  # Exit program
+        except EOFError:  # Exit program (Ctrl + Z)
             exit()
         if command.strip() == "exit" or command.strip() == "quit": exit()
         elif command.strip(): break
     while command[-1]!=";":
-        command += " " + input(".......")
+            appendix = input(".......")
+            if appendix.strip():
+                command += "\n" + appendix
+            else:
+                command += ';'
+                break
     return command
 
 def parse_cmdline_args():
@@ -45,26 +50,28 @@ def parse_cmdline_args():
     print(program_desc)
     return args
 
-def handle_script(script_path, rootdir, verbose):
+def handle_script(script_path, verbose=False):
     script = open(script_path).read()
+    if script[-1] != ";": script += ';'
     sql_parser = sqlparser.SqlParser(script)
     nodes = sql_parser.parse_multi_commands()
     for node in nodes:
-        sqlexecuter.execNode(node, rootdir, verbose)
+        sqlexecuter.execNode(node, verbose)
 
-def handle_interpreter(rootdir, verbose):
+def handle_interpreter(verbose=False):
     while True:
         command = input_command()
         sql_parser = sqlparser.SqlParser(command)  # 3 times 'sql parser' in one line LoL
         node = sql_parser.parse_show_error()
-        sqlexecuter.execNode(node, rootdir, verbose)
+        sqlexecuter.execNode(node, verbose)
 
 def main():
     args = parse_cmdline_args()
+    os.chdir(args.rootdir_path)
     if args.script_path:  # User supplied a script file path
-        handle_script(args.script_path, args.rootdir_path, args.verbose)
+        handle_script(args.script_path,args.verbose)
     else:
-        handle_interpreter(args.rootdir_path, args.verbose)
+        handle_interpreter(args.verbose)
         
 
 
