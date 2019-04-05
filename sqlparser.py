@@ -17,7 +17,7 @@ class CSVDBSyntaxError(ValueError):
             # s += line_text
             if i == self.line - 1:
                 location_clause += line_text + "\n"
-                location_clause += " " * (self.col - 1) + "^"
+                location_clause += " " * (self.col-1) + "^^^"
 
         self.message = f"CSVDB Syntax error at line {line} col {col}:\n{location_clause}\n{message}\n"
     def __str__(self):
@@ -82,17 +82,18 @@ class SqlParser(object):
         self._next_token()
         self._expect_cur_token(token, expected_val_or_none, regex)
 
-    def _expect_cur_token(self, token, expected_val_or_none=None, regex=None):
+    def _expect_cur_token(self, tokens, expected_val_or_none=None, regex=None):
         if expected_val_or_none and not isinstance(expected_val_or_none, list):
              # make possible value in the format of a list
-            expected_val_or_none = [expected_val_or_none] 
-        if self._token != token:
-            self._raise_error("Unexpected token: {}:{} (expecting {})".format(self._token, self._val, token) )
-        elif expected_val_or_none and self._val not in expected_val_or_none:
+            expected_val_or_none = [expected_val_or_none]
+        if not isinstance(tokens, list):
+             # make possible value in the format of a list
+            tokens = [tokens]
+        if self._token not in tokens:
+            self._raise_error("Unexpected token: {}:{} (expecting {})".format(self._token, self._val, " | ".join([str(tk) for tk in tokens])))
+        elif (expected_val_or_none and self._val not in expected_val_or_none) \
+             or (regex and not re.match(regex, self._val)):
             self._raise_error("Unexpected token value: " + str(self._val))
-        elif regex and not re.match(regex, self._val):
-            self._raise_error("Unexpected token value: " + str(self._val))
-
 
     def parse_single_command(self):
         """Parse a single command and return syntax-tree-node.
@@ -145,11 +146,13 @@ class SqlParser(object):
         _if_exists_ = False
         _table_name_ = ""
 
+        self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "drop")
         self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "table")
         self._next_token()
 
         # Parse "IF EXISTS" clause, if it exists ;) :
         if self._token == sqltokenizer.SqlTokenKind.KEYWORD and self._val == "if":
+            self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "if")
             self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "exists")
             self._next_token()
             _if_exists_ = True
@@ -215,7 +218,7 @@ class SqlParser(object):
 
                 {IDENTIFIER} _table_name_: [a-zA-Z_]\w*
                 _scheme_: [_name_ _type_,]*
-                        _name_ _type_
+                           _name_ _type_
                     {IDENTIFIER} _name_: [a-zA-Z_]\w*
                     {KEYWORD} _type_: [INT|FLOAT|VARCHAR|TIMESTAMP]
             2.
@@ -234,12 +237,13 @@ class SqlParser(object):
         _scheme_ = []
         _select_command_ = None
 
-
+        self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "create")
         self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "table")
         self._next_token()
 
         # Parse "IF NOT EXISTS" clause:
         if self._token == sqltokenizer.SqlTokenKind.KEYWORD and self._val == "if":
+            self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "if")
             self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "not")
             self._expect_next_token(sqltokenizer.SqlTokenKind.KEYWORD, "exists")
             self._next_token()
@@ -248,6 +252,7 @@ class SqlParser(object):
         self._expect_cur_token(sqltokenizer.SqlTokenKind.IDENTIFIER, regex=r"[a-zA-Z_]\w*")
         _table_name_ = self._val
         self._next_token()
+        self._expect_cur_token([sqltokenizer.SqlTokenKind.KEYWORD,sqltokenizer.SqlTokenKind.OPERATOR])
 
         if self._val == "(" and self._token == sqltokenizer.SqlTokenKind.OPERATOR:
             # Parse table scheme:
@@ -320,15 +325,18 @@ class SqlParser(object):
         _group_condition_ = None
         _order_fields_ = []
 
-
+        self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, "select")
         self._next_token()
-        if self._val == "*":
+        self._expect_cur_token([sqltokenizer.SqlTokenKind.KEYWORD, sqltokenizer.SqlTokenKind.IDENTIFIER, sqltokenizer.SqlTokenKind.OPERATOR])
+        if self._token == sqltokenizer.SqlTokenKind.OPERATOR and self._val == "*":
+            self._expect_cur_token(sqltokenizer.SqlTokenKind.OPERATOR, '*')
             self._next_token()
         else:
             # Parse expression list:
             while True:
                 # Parse single expression:
                 _agg_func_ = _field_name_ = _field_identifier_ = None
+                self._expect_cur_token([sqltokenizer.SqlTokenKind.KEYWORD, sqltokenizer.SqlTokenKind.IDENTIFIER])
                 if self._val in ["min","max","avg","sum","count"]: # aggregate expression
                     self._expect_cur_token(sqltokenizer.SqlTokenKind.KEYWORD, ["min","max","avg","sum","count"])
                     _agg_func_ = self._val
@@ -372,6 +380,7 @@ class SqlParser(object):
         _table_name_ = self._val
         self._next_token()
 
+        self._expect_cur_token([sqltokenizer.SqlTokenKind.KEYWORD, sqltokenizer.SqlTokenKind.OPERATOR])
 
         # Attempt parse optional "WHERE" clause:
         if self._token == sqltokenizer.SqlTokenKind.KEYWORD and self._val == "where":

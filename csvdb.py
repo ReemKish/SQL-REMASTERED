@@ -33,7 +33,10 @@ def input_command():
         if command.strip() == "exit" or command.strip() == "quit": exit()
         elif command.strip(): break
     while command[-1]!=";":
-            appendix = input(".......")
+            try:
+                appendix = input(".......")
+            except EOFError:  # Exit program (Ctrl + Z)
+                exit()
             if appendix.strip():
                 command += "\n" + appendix
             else:
@@ -47,7 +50,6 @@ def parse_cmdline_args():
         cl_parser.error(f"argument -r/--run: No such directory: '{args.rootdir_path}'")
     if args.script_path and not os.path.isfile(args.script_path):
         cl_parser.error(f"argument -r/--run: No such file: '{args.script_path}'")
-    print(program_desc)
     return args
 
 def handle_script(script_path, verbose=False):
@@ -59,11 +61,13 @@ def handle_script(script_path, verbose=False):
         sqlexecuter.execNode(node, verbose)
 
 def handle_interpreter(verbose=False):
+    print(program_desc)
     while True:
         command = input_command()
         sql_parser = sqlparser.SqlParser(command)  # 3 times 'sql parser' in one line LoL
-        node = sql_parser.parse_show_error()
-        sqlexecuter.execNode(node, verbose)
+        nodes = sql_parser.parse_multi_commands()
+        for node in nodes:
+            sqlexecuter.execNode(node, verbose)
 
 def main():
     args = parse_cmdline_args()
