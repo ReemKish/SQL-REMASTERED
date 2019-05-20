@@ -25,6 +25,6 @@ The table file format is as follows:
         ```
         [pointer0][pointer1]...[pointerN][record0][record1]...[recordN]
         ```
-        N = Number of records in the table
+        N = Number of records in the table<br>
         pointer = 64 bit unsassigned int<br>
         record = variable length string
