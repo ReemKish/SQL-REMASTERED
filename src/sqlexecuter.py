@@ -19,7 +19,6 @@ class TableAlreadyExistsError(CSVDBException):
         return self.message
 
 
-
 def execNode(node, verbose=False):
     if isinstance(node, NodeCreate):  # Create node
         execCreate(node, verbose)
@@ -47,12 +46,16 @@ def execCreate(node, verbose=False):
               json_file, sort_keys=True, indent=2, separators=(',', ': '))
     json_file.close()
 
-    # Further implementation:
-    pass
+    # Create column files:
+    for column in node.scheme:
+        open(os.path.join(node.table_name,
+                column.identifier + (".dcol" if column.type == "varchar" else ".scol")),'w').close()
 
 
 def execDrop(node, verbose=False):
-    pass
+    for f in os.listdir(node.table_name):
+        os.remove(os.path.join(node.table_name, f))
+    os.rmdir(node.table_name)
 
 def execLoad(node, verbose=False):
     pass
