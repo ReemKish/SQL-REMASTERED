@@ -1,4 +1,0 @@
-1. Plan the database file format.
-    * Fixed length types (int,timestamp,float) are not a problem, their offset can be calculated. 
-    * For varchars, start the file with a sequence of offsets, each taking 64 bits.
-     

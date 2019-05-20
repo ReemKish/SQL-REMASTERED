@@ -28,14 +28,16 @@ def input_command():
     while True:
         try:
             command = input("csvdb> ")
-        except EOFError:  # Exit program (Ctrl + Z)
+        except EOFError:  # Exit program (Ctrl + Z | Ctrl + D)    "python.jediEnabled": false
+            print()
             exit()
         if command.strip() == "exit" or command.strip() == "quit": exit()
         elif command.strip(): break
     while command[-1]!=";":
             try:
                 appendix = input(".......")
-            except EOFError:  # Exit program (Ctrl + Z)
+            except EOFError:  # Exit program (Ctrl + Z | Ctrl + D)
+                print()
                 exit()
             if appendix.strip():
                 command += "\n" + appendix

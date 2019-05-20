@@ -4,7 +4,7 @@ from argument_clauses import *
 from sys import float_info
 
 
-class CSVDBSyntaxError(ValueError):
+class CSVDBSyntaxError(SyntaxError):
     def __init__(self, message, line, col, text):
         super().__init__()
         self.line = line
@@ -25,6 +25,9 @@ class CSVDBSyntaxError(ValueError):
 
 class BaseSyntaxNode(object):
     """base class for all syntax-tree nodes"""
+    def __init__(self, table_name):
+        self.table_name = table_name
+
     def __iter__(self):
         attributes = [a for a in dir(self) if not a.startswith('__') and not callable(getattr(self,a))]
         for attr in attributes:
@@ -38,28 +41,28 @@ class BaseSyntaxNode(object):
 
 class NodeDrop(BaseSyntaxNode):
     def __init__(self, table_name, if_exists):
-        self.table_name = table_name
+        super().__init__(table_name)
         self.if_exists =  if_exists
 
 class NodeLoad(BaseSyntaxNode):
     def __init__(self, infile_name, table_name, ignore_lines):
+        super().__init__(table_name)
         self.infile_name = infile_name
-        self.table_name = table_name
         self.ignore_lines = ignore_lines
 
 class NodeCreate(BaseSyntaxNode):
     def __init__(self, if_not_exists, table_name, scheme, select_command):
+        super().__init__(table_name)
         self.if_not_exists = if_not_exists
-        self.table_name = table_name
         self.scheme = scheme
         self.select_command = select_command
 
 class NodeSelect(BaseSyntaxNode):
     def __init__(self, expression_list, outfile_name, table_name, row_condition,
                  group_fields, group_condition, order_fields):
+        super().__init__(table_name)
         self.expression_list = expression_list
         self.outfile_name = outfile_name
-        self.table_name = table_name
         self.row_condition = row_condition
         self.group_fields = group_fields
         self.group_condition = group_condition
