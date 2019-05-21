@@ -3,17 +3,26 @@
 # By Maayan Kestenberg and Re'em Kishnveksy
 
 import argparse
-from colorama import init, Fore, Style # For displaying colored text to the terminal
 import os
 import sqlparser
 import sqlexecuter
-
+try:
+    from colorama import init, Fore, Style # For displaying colored text to the terminal
+    colors = True
+except ModuleNotFoundError:
+    colors = False
 # ---------------------------------------- Initialization -----------------------------------------
 init()  # Init colorama
-program_desc = f"""
-             {Style.BRIGHT}{Fore.YELLOW}SQL Remastered{Style.NORMAL}
-By Re'em Kishnevsky and Maayan Kestenboi{Style.RESET_ALL}
-"""  # In the future the description will contain a nice ascii graphic. But that will be the last thing we do in this project
+if colors:
+    program_desc = f"""
+                {Style.BRIGHT}{Fore.YELLOW}SQL Remastered{Style.NORMAL}
+    By Re'em Kishnevsky and Maayan Kestenboi{Style.RESET_ALL}
+    """
+else:
+    program_desc = f"""
+                SQL Remastered
+    By Re'em Kishnevsky and Maayan Kestenboi
+    """ 
 
 cl_parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description = program_desc)
 cl_parser.add_argument("-d", "--rootdir", help="the root directory of your project. Defaults to the current working directory",
@@ -28,7 +37,7 @@ def input_command():
     while True:
         try:
             command = input("csvdb> ")
-        except EOFError:  # Exit program (Ctrl + Z | Ctrl + D)    "python.jediEnabled": false
+        except EOFError:  # Exit program (Ctrl + Z | Ctrl + D)
             print()
             exit()
         if command.strip() == "exit" or command.strip() == "quit": exit()
