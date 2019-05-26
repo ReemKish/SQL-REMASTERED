@@ -128,7 +128,7 @@ class OrderField(Field):
 
 
 class CreateField(Field):
-    """A CreateField object represents a table field (column) in the scheme clause of the CREATE command:
+    """A CreateField object represents a table field (column) in the schema clause of the CREATE command:
     Syntax: 
         _name_ _type_
 
