@@ -24,10 +24,10 @@ class Column:
         self.field = field
         self.type = _type
         self.col_path = os.path.join(self.table.name, self.field) + ".col"
-        self.colfile = open(self.col_path, 'w'); self.colfile.close()
+        self.colfile = open(self.col_path, 'a'); self.colfile.close()
         if self.type == "varchar":
             self.pointers_path = os.path.join(self.table.name, self.field) + ".pointers"
-            self.pointersfile = open(self.pointers_path, 'w'); self.pointersfile.close()
+            self.pointersfile = open(self.pointers_path, 'a'); self.pointersfile.close()
             self.cur_pointer = 0  # value of the current pointer
 
     def close(self):
@@ -58,10 +58,10 @@ class Column:
                 record = self.colfile.read(next_pointer-self.cur_pointer).decode("utf-8")
                 self.cur_pointer = next_pointer
                 return record
-        # Numeric column (INT | FLOAT | TIMESTAMP)
-        next_bytes = self.colfile.read(8)
-        if next_bytes:                   
-            record = struct.unpack(Column.TYPE_TO_FORMAT[self.type], next_bytes)[0]
-            if record in Column.TYPE_TO_NULL.values(): return "NULL"
-            return record
-        raise StopIteration
+        else:  # Numeric column (INT | FLOAT | TIMESTAMP)
+            next_bytes = self.colfile.read(8)
+            if next_bytes:                   
+                record = struct.unpack(Column.TYPE_TO_FORMAT[self.type], next_bytes)[0]
+                if record in Column.TYPE_TO_NULL.values(): return "NULL"
+                return record
+            raise StopIteration

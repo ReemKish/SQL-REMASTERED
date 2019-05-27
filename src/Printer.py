@@ -27,21 +27,25 @@ class Printer:
         """Calculate the length of each varchar and each numeric column in the
         current output for it to display correctly
         """
-        x = 2;
+        ratio = 2;  # ratio of varchar column length to numeric column length
         num_varchar = sum(1 for column in self.columns if column.type == "varchar" )
         num_numeric = self.num_cols - num_varchar
-        numeric_length = (self.width - num_numeric - num_varchar + 1) // (x*num_varchar + num_numeric)
-        varchar_length = numeric_length * x
+        numeric_length = (self.width - num_numeric - num_varchar + 1) // (ratio*num_varchar + num_numeric)
+        varchar_length = numeric_length * ratio
         self.column_lengths = [varchar_length if column.type=="varchar" else numeric_length for column in self.columns]
-        self.total_width = sum(self.column_lengths) + self.num_cols - 1
 
 
     def print_rows(self, rows):
         self.set_column_lengths()
-        # Print fields and seperator line:
+        # Print fields:
         fields = next(rows)
         self.print_row(fields)
-        print('-'*self.total_width)
+        # Print separator line:
+        separator = ""
+        for length in self.column_lengths:
+            separator += '-' * length + '+'
+        separator = separator[:-1]
+        print(separator)
         # Print records:
         for row in rows:
             self.print_row(row)

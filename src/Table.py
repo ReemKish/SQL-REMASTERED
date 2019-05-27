@@ -226,17 +226,24 @@ class Table:
 
     def select_generator(self, node):
         if not node.expression_list:  # 'Select * from ...'
-            for column in self.columns: column.open()
+            for column in self.columns: 
+                column.open()
             yield [column.field for column in self.columns]  # yield column fields
             for row in zip(*self.columns): yield row  # yield all column values
+        # for column in self.columns: column.close()
 
 
     def Select(self, node):
+        if not Table.table_exists(node.table_name):  # table to load into doesn't exist
+            print(TableNotExistsError(node.table_name))
+            return
+            
         rows = self.select_generator(node)
         if node.outfile_name:  # export output to csv file
             # TODO - export to csv
             pass
         else:  # print output to terminal
+            # print(*[row for row in rows])
             self.printer.print_rows(rows)
 
         
