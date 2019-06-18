@@ -71,8 +71,7 @@ class Console:
             "t": "DROP TABLE IF EXISTS test;" +
                  "CREATE TABLE test (title VARCHAR, tyear INT, duration TIMESTAMP, score FLOAT);" +
                  "LOAD DATA INFILE \"test.csv\" INTO TABLE test IGNORE 1 LINES;" +
-                 "SELECT * FROM test;"
-            
+                 "SELECT * FROM test;" 
         }
     
 

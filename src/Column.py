@@ -19,10 +19,11 @@ class Column:
         "timestamp": 0
     }
 
-    def __init__(self, table, field, _type):
+    def __init__(self, table, field, _type, index):
         self.table = table
         self.field = field
         self.type = _type
+        self.index = index
         self.col_path = os.path.join(self.table.name, self.field) + ".col"
         self.colfile = open(self.col_path, 'a'); self.colfile.close()
         if self.type == "varchar":
@@ -62,6 +63,6 @@ class Column:
             next_bytes = self.colfile.read(8)
             if next_bytes:                   
                 record = struct.unpack(Column.TYPE_TO_FORMAT[self.type], next_bytes)[0]
-                if record in Column.TYPE_TO_NULL.values(): return "NULL"
+                # if record in Column.TYPE_TO_NULL.values(): return "NULL"
                 return record
             raise StopIteration

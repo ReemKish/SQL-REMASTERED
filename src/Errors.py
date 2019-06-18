@@ -20,7 +20,7 @@ class CSVDBSyntaxError(SyntaxError):
 
 class CSVDBException(Exception):
     def __init__(self):
-        self.message = "CSVDB error:\n"
+        self.message = "CSVDB SQL error:\n"
 
 
 class TableAlreadyExistsError(CSVDBException):
@@ -34,7 +34,7 @@ class TableAlreadyExistsError(CSVDBException):
 
 
 class TableNotExistsError(CSVDBException):
-    """Raised by Drop | Select when a table is referenced that doesn't exist.
+    """Raised by Drop | Select | Load when a table is referenced that doesn't exist.
     """
     def __init__(self, table_name):
         super().__init__()
@@ -51,3 +51,19 @@ class InfileNotExistsError(CSVDBException):
         self.message += f"csv infile {filename} doesn't exist\n"
     def __str__(self):
         return self.message
+
+class DirectoryAlreadyExistsError(CSVDBException):
+    """Raised by Create when trying to create a table while a directory with the same
+    name exists, that isn't a table (if it's a table, TableAlreadyExistsError is raised).
+    """
+    def __init__(self, table_name):
+        super().__init__()
+        self.message += f"a direcotry with name {table_name} already exists\n"
+    def __str__(self):
+        return self.message
+
+class SoftError(CSVDBException):
+    """Raised when the function cannot continue, but no due to an error
+    """
+    def __str__(self):
+        return ""

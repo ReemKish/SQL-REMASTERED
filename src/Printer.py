@@ -1,4 +1,5 @@
 import os
+from Column import Column
 
 class Printer:
     """This class handles the printing of a SELECT command output to the console in the correct format. 
@@ -53,6 +54,7 @@ class Printer:
     def print_row(self, row):
         is_last = False
         for i, record in enumerate(row):
+            if record in Column.TYPE_TO_NULL.values(): record = "NULL"            
             if i == len(row) - 1:
                 is_last = True
             length = self.column_lengths[i]

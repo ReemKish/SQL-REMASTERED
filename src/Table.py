@@ -2,11 +2,13 @@ from Column import Column
 from Errors import *
 from SqlParser import NodeCreate, NodeDrop, NodeLoad, NodeSelect
 from Printer import Printer
+from ArgumentClauses import CreateField
 
 import os
 import json 
 import csv
 import struct
+import random
 
 
 class Table:
@@ -49,9 +51,10 @@ class Table:
             self.name = jsondata["name"]
             self.num_cols = jsondata["cols"]
             self.num_rows = jsondata["rows"]
-            self.columns = [Column(self, column["field"], column["type"])
-                         for column in jsondata["schema"]]
+            self.columns = [Column(self, column["field"], column["type"], i)
+                         for i, column in enumerate(jsondata["schema"])]
             self.printer = Printer(self.columns)  # for printing SELECT output to the console
+            self.column_dict = {column.field : column for column in self.columns}
             
 
     @staticmethod
@@ -64,15 +67,17 @@ class Table:
         table = Table.table_dict.get(node.table_name)
         if table is None:
             table = Table(node.table_name)
-        
-        if isinstance(node, NodeSelect):  # Select node
-            return table.Select(node)
-        elif isinstance(node, NodeLoad):  # Load node
-            table.Load(node)    
-        elif isinstance(node, NodeCreate):  # Create node
-            table.Create(node)
-        elif isinstance(node, NodeDrop):  # Drop node
-            table.Drop(node)        
+        try:
+            if isinstance(node, NodeSelect):  # Select node
+                return table.Select(node)
+            elif isinstance(node, NodeLoad):  # Load node
+                table.Load(node)    
+            elif isinstance(node, NodeCreate):  # Create node
+                table.Create(node)
+            elif isinstance(node, NodeDrop):  # Drop node
+                table.Drop(node)        
+        except CSVDBException as e:
+            print(e)
 
     @staticmethod
     def table_exists(table_name):
@@ -121,16 +126,54 @@ class Table:
 
 
 
-    def Create(self, node):
+    def assert_create(self, node):
+        """Raises an error if the pre-conditions to the CREATE command aren't met by the node arguments. 
+        """
         if Table.table_exists(node.table_name):
             if node.if_not_exists:  # end command gracefully
                 if Table.verbose:
                     print(f"Verbose: Table {node.table_name} already exists therefore no changes were made to the database.\n")
+                raise SoftError()
             else:  # end command by exception
-                print(TableAlreadyExistsError(node.table_name))
+                raise TableAlreadyExistsError(node.table_name)
             return
+        if os.path.isdir(node.table_name):
+            raise DirectoryAlreadyExistsError(node.table_name)
 
-        # TODO - what if a folder by the same name exists but is not a table
+    def create_as_select_get_schema(self, node):
+        select_command = node.select_command
+        schema = []
+        table = Table(select_command.table_name)
+        
+        if not select_command.expression_list:
+            for column in table.columns:
+                schema.append(CreateField(column.field, column.type))
+        else:
+            for field in select_command.expression_list:
+                for column in table.columns:
+                    if field.name == column.field:
+                        schema.append(CreateField(field.identifier, column.type))
+        return schema
+
+    def create_as_select(self, node):
+        select_command = node.select_command
+        temp = False
+        if not select_command.outfile_name:
+            temp = True
+            select_command.outfile_name = "csvdbtemp-" + self.name + ".csv"
+        Table.execute_command(select_command)
+        load_command = NodeLoad(select_command.outfile_name, self.name, 1)
+        self.Load(load_command)
+        if temp:
+            os.remove(select_command.outfile_name)
+
+    def Create(self, node):
+        self.assert_create(node)  # assure pre-conditions are met
+
+        # CREATE AS SELECT - get schema
+        if node.select_command is not None:
+            node.schema = self.create_as_select_get_schema(node)
+
         os.mkdir(node.table_name)  # create directoy for the table
         # Set table properties and write the JSON file:
         self.name = node.table_name
@@ -138,23 +181,36 @@ class Table:
         self.num_cols = len(node.schema)
         self.columns = [Column(self, column.identifier, column.type) for column in node.schema]
         self.update_json()
-        self.printer = Printer(self.columns) 
+        self.printer = Printer(self.columns)
+        self.column_dict = {column.field : column for column in self.columns}
+
+        # CREATE AS SELECT - get schema
+        if node.select_command is not None:
+            self.create_as_select(node)
+            
 
 
 
-    def Drop(self, node):
+    def assert_drop(self, node):
+        """Raises an error if the pre-conditions to the DROP command aren't met by the node arguments. 
+        """
         if not Table.table_exists(node.table_name):
             if node.if_exists:  # end command gracefully
                 if Table.verbose:
                     print(f"Verbose: Table {node.table_name} doesn't exist therefore no changes were made to the database.\n")
+                raise SoftError()
             else:  # end command by exception
-                print(TableNotExistsError(node.table_name))
-            return               
+                raise TableNotExistsError(node.table_name)
+
+
+    def Drop(self, node):
+        self.assert_drop(node)  # assure pre-conditions are met               
 
         # Remove the table directory and all its contents:
         for f in os.listdir(node.table_name):
             os.remove(os.path.join(node.table_name, f))
         os.rmdir(node.table_name)
+
 
 
     def load_varchar(self, column, record):
@@ -179,7 +235,6 @@ class Table:
             record_val = int(record)
         column.colfile.write(struct.pack(format, record_val))
 
-
     def load_record(self, column, record):
         """Loads a record `record` into column `column`
         """ 
@@ -188,22 +243,29 @@ class Table:
         else:  # numeric column (INT | FLOAT | TIMESTAMP)
             self.load_numeric(column, record, format=Table.TYPE_TO_FORMAT[column.type])
 
-    def Load(self, node):
+    def assert_load(self, node):
+        """Raises an error if the pre-conditions to the LOAD command aren't met by the node arguments. 
+        """
         if not Table.file_exists(node.infile_name):  # .csv file doesn't exist
-            print(InfileNotExistsError(node.infile_name))
+            raise InfileNotExistsError(node.infile_name)
             return
         if not Table.table_exists(node.table_name):  # table to load into doesn't exist
-            print(TableNotExistsError(node.table_name))
+            raise TableNotExistsError(node.table_name)
             return
+
+
+    def Load(self, node):
+        self.assert_load(node)  # assure pre-conditions are met
 
         # Both infile and table exist, continue:
         # Count rows and update `rows` field of the json data:
         infile = open(node.infile_name, 'r')
         rows = sum(1 for line in infile)
-        self.num_rows += rows
+        self.num_rows += rows - node.ignore_lines
         self.update_json()
 
         infile = open(node.infile_name, 'r')
+
         reader = csv.reader(infile)
         # Skip `ignore_lines` lines from the top:
         for _ in range(node.ignore_lines):
@@ -221,7 +283,39 @@ class Table:
         # Finished loading - close all files:
         for column in self.columns: 
             column.close()
+        infile.close()
 
+
+    def row_meets_condition(self, node, row):
+        """Returns true iff the row meets the condition (WHERE clause).
+        """
+        condition = node.row_condition
+        value = row[self.column_dict[condition.field_name].index]
+        constant = condition.constant
+
+        if value in Column.TYPE_TO_NULL.values():
+            if condition.operator == "is":
+                return True
+            return False
+
+        if condition.operator == "=":
+            return value == constant
+        elif condition.operator == ">":
+            return value > constant
+        elif condition.operator == "<":
+            return value < constant
+        elif condition.operator == ">=":
+            return value >= constant
+        elif condition.operator == "<=":
+            return value <= constant
+        elif condition.operator == "<>":
+            return value != constant
+        elif condition.operator == "is":
+                return False
+        elif condition.operator == "is not":
+                return True
+        
+        
 
 
     def select_generator(self, node):
@@ -229,21 +323,37 @@ class Table:
             for column in self.columns: 
                 column.open()
             yield [column.field for column in self.columns]  # yield column fields
+            if node.row_condition:
+                for row in zip(*self.columns):
+                    if self.row_meets_condition(node, row):
+                        yield row 
             for row in zip(*self.columns): yield row  # yield all column values
-        # for column in self.columns: column.close()
+        for column in self.columns: column.close()
+
+    def assert_select(self, node):
+        """Raises an error if the pre-conditions to the SELECT command aren't met by the node arguments. 
+        """
+        if not Table.table_exists(node.table_name):  # table to select from doesn't exist
+            raise TableNotExistsError(node.table_name)
 
 
     def Select(self, node):
-        if not Table.table_exists(node.table_name):  # table to load into doesn't exist
-            print(TableNotExistsError(node.table_name))
-            return
-            
+        self.assert_select(node)  # assure pre-conditions are met
         rows = self.select_generator(node)
+
         if node.outfile_name:  # export output to csv file
-            # TODO - export to csv
-            pass
+            outfile = open(node.outfile_name, "w")
+            writer = csv.writer(outfile)
+            for row in rows:
+                nonull_row = []
+                for field in row:
+                    if field in Column.TYPE_TO_NULL.values():
+                        nonull_row.append("")
+                    else:
+                        nonull_row.append(field)
+                writer.writerow(nonull_row)
+            outfile.close()
         else:  # print output to terminal
-            # print(*[row for row in rows])
             self.printer.print_rows(rows)
 
         

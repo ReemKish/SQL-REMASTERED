@@ -28,3 +28,10 @@ The table file format is as follows:
         N = Number of records in the table<br>
         pointerX = 64 bit unsigned int address of the X-th record in the column<br>
         (first pointer points to record(1) since record(0) is always at offset 0).
+
+## Status
+Currenly, the project's features are:
+* Command Line Interface with arguments -v, -r, -d, -h.
+* SQL Commands: CREATE, CREATE AS SELECT, LOAD, DROP.
+* Select command only supports selecting all the columns (*) and the clauses: INTO OUTFILE, WHERE.
+* Pretty print of the select output to the terminal (Works better on Unix).
