@@ -179,7 +179,7 @@ class Table:
         self.name = node.table_name
         self.num_rows = 0
         self.num_cols = len(node.schema)
-        self.columns = [Column(self, column.identifier, column.type) for column in node.schema]
+        self.columns = [Column(self, column.identifier, column.type, i) for i,column in enumerate(node.schema)]
         self.update_json()
         self.printer = Printer(self.columns)
         self.column_dict = {column.field : column for column in self.columns}

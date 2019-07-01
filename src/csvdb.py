@@ -130,8 +130,7 @@ class Console:
             sqlparser = SqlParser(command)
             nodes = sqlparser.parse_multi_commands()
             for node in nodes:
-                rows = Table.execute_command(node)
-                if rows is not None: self.print_rows(rows)
+                Table.execute_command(node)
 
 
 
